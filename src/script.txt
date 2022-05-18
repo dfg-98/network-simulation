@@ -6,4 +6,5 @@
 1 connect h_1 pc1_1
 1 connect h_2 pc2_1
 1 connect h_3 pc3_1
-1 connect h_4 pc4_1
+18 send pc1 010101011111111100000000
+20 send pc2 010101011111111100000000
