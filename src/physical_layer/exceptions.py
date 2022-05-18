@@ -1,7 +1,4 @@
-from exceptions import Exception
-
-from .wire import Wire
-from .port import Port
+from __future__ import annotations
 
 
 class WireConnectionError(Exception):
@@ -9,7 +6,7 @@ class WireConnectionError(Exception):
     Exception raised when a wire connection is not possible.
     """
 
-    def __init__(self, wire: Wire) -> None:
+    def __init__(self, wire: "Wire") -> None:
         super().__init__()
         self.wire = wire
 
@@ -26,7 +23,7 @@ class PortNotConnectedError(Exception):
     Exception raised when a port is not connected to a wire.
     """
 
-    def __init__(self, port: Port) -> None:
+    def __init__(self, port: "Port") -> None:
         super().__init__()
         self.port = port
 

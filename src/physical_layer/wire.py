@@ -1,39 +1,31 @@
-from .port import Port
+from .bit import Bit
+from .constants import SIGNAL_TIME
 
 
 class Wire:
-    """A wire connects two devices
+    """Represents a physical wire"""
 
-    Collisions can occurs if two devices writes at the same time
-
-    """
-
-    _value = None
-    port1 = None
-    port2 = None
-
-    def __init__(self, port1=None, port2=None) -> None:
+    def __init__(self, port1, port2, value: Bit = None) -> None:
+        self.value = value
+        self.time_to_reset = 0
         self.port1 = port1
         self.port2 = port2
+        self.port1.connect(self)
+        self.port2.connect(self)
 
-    @property
-    def value(self):
-        return self._value
+    def update(self):
 
-    def clear(self):
-        """Clear the value of the wire"""
-        self.value = None
+        if self.value is not None and self.time_to_reset == 0:
+            self.value = None
+        elif self.time_to_reset > 0:
+            self.time_to_reset -= 1
 
-    def connect(self, port1: Port, port2: Port):
-        """Connect the two ports.
-        Use Port.connect method to connect the ports.
-        """
-        self.port1 = self.port2 = None
-        port1.connect(self)
-        port2.connect(self)
+    def write(self, value: Bit, time_to_reset: int = SIGNAL_TIME):
+        self.value = value
+        self.time_to_reset = time_to_reset
 
-    def write(self, value):
-        """Write the value to the wire"""
-        self._value = value
-        self.port1.wire_written()
-        self.port2.wire_written()
+        if self.port1.written_callback:
+            self.port1.written_callback(self.port1)
+        if self.port2.written_callback:
+            self.port2.written_callback(self.port2)
+        return self.value
