@@ -8,6 +8,7 @@ from instructions import (
     ConnectIns,
     DisconnectIns,
 )
+from physical_layer.bit import Bit
 
 
 def _to_binary(hex_num: str, fmt: str = "016b"):
@@ -50,7 +51,7 @@ def _parse_single_inst(inst_text: str):
 
     elif inst_name == "send":
         host_name = temp_line[2]
-        data = [int(bit) for bit in temp_line[3]]
+        data = [Bit(int(bit)) for bit in temp_line[3]]
         return SendIns(inst_time, host_name, data)
 
     else:

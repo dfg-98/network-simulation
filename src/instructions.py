@@ -1,14 +1,13 @@
+from __future__ import annotations
 import abc
-import time
-from threading import Thread
 from typing import List
 
-from simulation import Simulation
 from physical_layer.hub import Hub
 from physical_layer.host import Host
+from physical_layer.bit import Bit
 
 
-class Instruction(Thread, metaclass=abc.ABCMeta):
+class Instruction(metaclass=abc.ABCMeta):
     """
     Representación general de una instrucción.
 
@@ -23,21 +22,12 @@ class Instruction(Thread, metaclass=abc.ABCMeta):
         super().__init__()
         self.time = time
 
-    def set_simulation(self, sim: Simulation):
-        self.sim = sim
-
     @abc.abstractmethod
-    def execute(self, sim: Simulation):
+    def execute(self, sim: "Simulation"):
         """
         Ejecuta la instrucción en una simulación dada.
 
         """
-
-    def run(
-        self,
-    ) -> None:
-        time.sleep(self.time)
-        self.execute(self.sim)
 
 
 class CreateHubIns(Instruction):
@@ -83,7 +73,7 @@ class CreateHostIns(Instruction):
         super().__init__(time)
         self.host_name = host_name
 
-    def execute(self, sim: Simulation):
+    def execute(self, sim: "Simulation"):
         print(f"Creating host: {self.host_name}")
         host = Host(self.host_name)
         sim.add_device(host)
@@ -127,7 +117,7 @@ class SendIns(Instruction):
         Datos a enviar.
     """
 
-    def __init__(self, time: int, host_name: str, data: List[int]):
+    def __init__(self, time: int, host_name: str, data: List[Bit]):
         super().__init__(time)
         self.host_name = host_name
         self.data = data
