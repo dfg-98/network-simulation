@@ -1,0 +1,9 @@
+0 create host pc1
+0 create host pc2
+0 create host pc3
+0 create host pc4
+0 create hub h 4
+1 connect h_1 pc1_1
+1 connect h_2 pc2_1
+1 connect h_3 pc3_1
+1 connect h_4 pc4_1
