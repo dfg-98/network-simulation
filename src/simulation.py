@@ -40,9 +40,6 @@ class Simulation:
             self.hosts[device.name] = device
 
     def connect(self, port_1: str, port_2: str):
-        print(
-            f"Connecting: {port_1} - {port_2}. Existing ports: {self.ports.keys()}"
-        )
         try:
             port1 = self._get_port_by_name(port_1)
             port2 = self._get_port_by_name(port_2)
@@ -123,7 +120,6 @@ class Simulation:
         for device in self.devices.values():
             if device not in self.hosts.values():
                 device.update(self.time)
-            print(device.name, device.logs[-1] if device.logs else None)
         for host in self.hosts.values():
             host.receive()
 

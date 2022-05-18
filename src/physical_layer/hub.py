@@ -1,5 +1,6 @@
 from functools import reduce
 from typing import List
+from pathlib import Path
 
 from .device import Device
 from .port import Port
@@ -46,7 +47,11 @@ class Hub(Device):
         self.logs.append(log_msg)
 
     def save_log(self, path=""):
-        with open(path + f"{self.name}.txt", "w+") as file:
+
+        output_folder = Path(path)
+        output_folder.mkdir(parents=True, exist_ok=True)
+        output_path = output_folder / Path(f"{self.name}.txt")
+        with open(str(output_path), "w+") as file:
             header = f'| {"Time (ms)": ^10} |'
             for port in self.ports.keys():
                 header += f" {port: ^11} |"
