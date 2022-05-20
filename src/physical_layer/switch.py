@@ -168,7 +168,8 @@ class Switch(Device):
         bit : int
             Bit recibido
         """
-
+        if bit == VD.NULL or bit == VD.COLLISION:
+            return
         self.ports_buffer[port].append(bit)
         self.handle_buffer_data(port)
 
