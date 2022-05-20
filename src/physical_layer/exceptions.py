@@ -29,3 +29,17 @@ class PortNotConnectedError(Exception):
 
     def __str__(self) -> str:
         return f"Port {self.port} is not connected to a wire."
+
+
+class TryToWriteOnTransmission(Exception):
+    """
+    Exception raised when a port try to write but wire is on transmission
+    """
+
+    def __init__(self, port: "Port", wire: "Wire") -> None:
+        super().__init__()
+        self.port = port
+        self.wire = wire
+
+    def __str__(self) -> str:
+        return f"Port {self.port} try to write on wire {self.wire} but wire is on transmission."
