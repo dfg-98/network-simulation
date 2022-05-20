@@ -2,6 +2,8 @@ from functools import reduce
 from typing import List
 from pathlib import Path
 
+from .bit import VoltageDecodification as VD
+from .constants import SIGNAL_TIME
 from .device import Device
 from .port import Port
 from .wire import Wire
@@ -16,10 +18,13 @@ class Hub(Device):
 
     def __init__(self, name: str, ports_count: int):
         self.current_transmitting_port = None
+        self.read_time = 0
         self._received, self._sent = [], []
         ports = {}
         for i in range(ports_count):
-            ports[f"{name}_{i+1}"] = Port(f"{name}_{i+1}", self.port_written)
+            port = Port(f"{name}_{i+1}")
+            port.write_callback = self.port_written(port)
+            ports[f"{name}_{i+1}"] = port
 
         super().__init__(name, ports)
 
@@ -65,7 +70,7 @@ class Hub(Device):
             file.write("\n".join(self.logs))
             file.write(f'\n{"-" * header_len}\n')
 
-    def get_port_value(self, port_name: str):
+    def get_port_value(self, port_name: str, received=True):
         """
         Devuelve el valor del cable conectado a un puerto dado. En caso de no
         tener un cable conectado devuelve ``'-'``.
@@ -76,24 +81,17 @@ class Hub(Device):
             Nombre del puerto.
         """
         port = self.ports[port_name]
-        return str(port.read()) if port.wire is not None else "-"
+        return str(port.read(received)) if port.cable is not None else "-"
 
     def update(self, time):
         super().update(time)
-        if self.current_transmitting_port is not None:
-            val = self.current_transmitting_port.read()
-            if val is not None:
-                for _, port in self.ports.items():
-                    if (
-                        port != self.current_transmitting_port
-                        and port.wire is not None
-                    ):
-                        port.write(val)
 
-        self._received = [self.get_port_value(p) for p in self.ports.keys()]
+        if self.read_time > 0:
+            self.read_time -= 1
 
-        self._sent = [self.get_port_value(p) for p in self.ports.keys()]
-        self.special_log(time, self._received, self._sent)
+        if self.read_time == 0:
+            self.special_log(time, self._received, self._sent)
+            self.read_time = SIGNAL_TIME
 
     def connect(self, wire: Wire, port_name: str):
         if self.ports[port_name].wire is not None:
@@ -102,5 +100,20 @@ class Hub(Device):
         self.ports[port_name].connect(wire)
 
     def port_written(self, port: Port):
-        if port.wire is not None:
-            self.current_transmitting_port = port
+        def port_write_callback():
+            if self.read_time == 0:
+                self.read_time = SIGNAL_TIME
+            if port.cable is not None:
+                value = port.read()
+                self._received = [
+                    self.get_port_value(p) for p in self.ports.keys()
+                ]
+
+                for p in self.ports.values():
+                    if p != port and p.cable is not None:
+                        p.write(value)
+                self._sent = [
+                    self.get_port_value(p, False) for p in self.ports.keys()
+                ]
+
+        return port_write_callback

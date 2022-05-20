@@ -1,167 +1,162 @@
-from collections import Counter
-from functools import reduce
-from typing import List
-from random import randint
+import imp
+from typing import List, Tuple
+from pathlib import Path
 
 from .constants import SIGNAL_TIME
 from .device import Device
 from .port import Port
-from .wire import Wire
-from .bit import Bit
+from .wire import Duplex
+from .bit import VoltageDecodification as VD
+from .physical_layer import PhysicalLayer
+from .utils import from_bit_data_to_number
+from .error_detection import check_frame_correction
+from config import CONFIG, check_config
 
 
 class Host(Device):
     """Represents a Host"""
 
     def __init__(self, name: str) -> None:
-        ports = {f"{name}_1": Port(f"{name}_1")}
+        port = Port(f"{name}_1")
+        ports = {f"{name}_1": port}
         super().__init__(name, ports)
-        self.data = []
-        self.current_package = []
-        self.package_index = 0
-        self.time_to_send = 0
-        self.max_time_to_send = 2
-        self.send_time = 0
-        self.sending_bit = None
-        self.is_sending = False
-        self.time_connected = 0
+        self.physical_layer = PhysicalLayer(port)
+
+        self.physical_layer.on_send_callbacks.append(
+            lambda bit: self.log(self.simulation_time, "Sent", f"{bit}")
+        )
+        self.physical_layer.on_receive_callbacks.append(
+            lambda bit: self.received_bit(bit)
+        )
+        self.physical_layer.on_collision_callbacks.append(
+            lambda: self.log(
+                self.simulation_time,
+                "Collision",
+                f"Waitting {self.physical_layer.time_to_send}ms to send",
+            )
+        )
+
         self.simulation_time = 0
-        self.recived_bits = []
+
+        # Data receiving
+        self.is_receiving_data = False
+        self.received_data = []
+        self.buffer = []
+        self.frame_start_index = 0
+        self.data_size = None
+        self.data_error_size = None
+        self.data_from = None
+
+    @property
+    def is_active(self):
+        return self.physical_layer.is_active
 
     @property
     def port(self) -> Port:
         """Returns host's port"""
         return self.ports[self.port_name(1)]
 
-    def readjust_max_time_to_send(self):
-        self.max_time_to_send *= 2
+    @property
+    def str_mac(self):
+        """str : Dirección mac del host."""
+        if self.mac is not None:
+            return "".join(map(str, self.mac))
 
-    def load_package(self):
-        """
-        Load next package to send if there are data
-        """
-        if not self.current_package:
-            if self.data:
-                self.current_package = self.data[:8]
-                self.data = self.data[8:]
-                self.max_time_to_send = 1
-                self.package_index = 0
-                self.send_time = 0
-                self.is_sending = True
-            elif self.is_sending:
-                self.sending_bit = None
-                self.is_sending = False
-
-    def send(self, data: List[Bit]):
+    def send(self, data: List[List[VD]]):
         """
         Add data to be sent
 
         Parameters
         ----------
-        data : List[int]
+        data : List[List[VD]]
         """
-        self.data += data
+        self.physical_layer.send(data)
 
-    def receive(self):
-        """
-        Read from port's connected wire
+    def connect(self, cable: Duplex, port_name: str):
+        if self.port.cable is not None:
+            raise ValueError(f"Port {port_name} is currently connected.")
 
-        If host is sending information checks for collisions.
-        Otherwise it store the reading between two SIGNAL_TIME
-        """
-        if self.is_sending:
-            self.check_collision()
-
-        if self.is_sending:
-            return
-
-        if self.time_connected % SIGNAL_TIME // 2 == 0:
-            if self.port.wire is not None:
-                val = self.port.read()
-                if val is not None:
-                    self.recived_bits.append(val)
-
-        if self.time_connected % SIGNAL_TIME == 0 and self.recived_bits:
-            temp = [(v, k) for k, v in Counter(self.recived_bits).items()]
-            self.log(
-                self.simulation_time,
-                "Received",
-                f"{max(temp, key=lambda x: x[0]  )[1]}",
-            )
-            self.recived_bits = []
-
-    def check_collision(self):
-        """
-        Check if collision happens
-        Returns
-        -------
-        bool
-            ``True`` if collision, ``False`` otherwise.
-        """
-        if self.is_sending and self.port.read() != self.sending_bit:
-            self.time_to_send = randint(1, self.max_time_to_send) * SIGNAL_TIME
-            self.readjust_max_time_to_send()
-            self.log(
-                self.simulation_time,
-                "Collision",
-                f"Waitting {self.time_to_send}ms to send",
-            )
-            self.package_index = 0
-            self.send_time = 0
-            self.is_sending = False
-            return True
-        return False
-
-    def connect(self, wire: Wire, port_name: str):
-        if self.port.wire is not None:
-            raise ValueError(f"Port {port_name} is currently in use.")
-
-        self.ports[self.port_name(1)].connect(wire)
+        self.ports[self.port_name(1)].connect(cable)
         self.logs(self.simulation_time, "Connected")
 
     def disconnect(self, port_name: str):
-        self.data = self.current_package + self.data
-        self.current_package = []
-        self.package_index = 0
-        self.is_sending = False
-        self.send_time = 0
-        self.sending_bit = 0
-        self.max_time_to_send = 2
-        self.time_connected = 0
-        self.recived_bits = []
-        super().disconnect(port_name)
+        self.physical_layer.disconnect()
         self.log(self.simulation_time, "Disconnected")
 
     def update(self, time):
         super().update(time)
+        self.physical_layer.update()
 
-        if self.time_to_send:
-            self.time_to_send -= 1
+    def received_bit(self, bit: int):
+        """
+        Se ejecuta cada vez que el host recibe un bit. Procesa la información
+        en el buffer para indentificar frames cuyo destino sea el host en
+        cuestión.
 
-        if self.time_to_send:
-            self.time_connected += 1
+        Parameters
+        ----------
+        bit : int
+            Bit recibido.
+        """
+
+        self.log(self.simulation_time, "Received", f"{bit}")
+        self.buffer.append(bit)
+
+        if bit is None:
+            self.is_receiving_data = False
+            self.buffer = []
+            self.data_from = None
+            self.frame_start_index = 0
+            self.data_size = 0
             return
 
-        if self.is_sending and self.check_collision():
-            self.time_connected += 1
-            return
+        if self.is_receiving_data:
+            received_size = len(self.buffer) - self.frame_start_index
+            fsi = self.frame_start_index
+            if received_size == 48:
+                _from = from_bit_data_to_number(
+                    self.buffer[fsi + 16 : fsi + 32]
+                )
+                self.data_from = str(hex(_from))[2:].upper()
+                self.data_size = from_bit_data_to_number(
+                    self.buffer[fsi + 32 : fsi + 40]
+                )
+                self.data_error_size = from_bit_data_to_number(
+                    self.buffer[fsi + 40 : fsi + 48]
+                )
+            elif (
+                received_size > 48
+                and received_size
+                == fsi + 48 + 8 * self.data_size + 8 * self.data_error_size
+            ):
+                frame, error = self.check_errors(self.buffer[fsi:])
+                data = from_bit_data_to_number(
+                    frame[48 : 48 + 8 * self.data_size]
+                )
+                hex_data = str(hex(data))[2:].upper()
+                if len(hex_data) % 4 != 0:
+                    rest = 4 - len(hex_data) % 4
+                    hex_data = "0" * rest + hex_data
+                r_data = [self.simulation_time, self.data_from, hex_data]
+                if error:
+                    r_data.append("ERROR")
+                self.received_data.append(r_data)
+                self.buffer = []
 
-        self.load_package()
+        last = self.buffer[-16:]
+        if "".join(map(str, last)) == self.str_mac:
+            self.is_receiving_data = True
+            self.frame_start_index = len(self.buffer) - 16
 
-        if self.current_package:
+    def save_log(self, path: str = ""):
+        super().save_log(path=path)
 
-            self.is_sending = True
-            self.sending_bit = self.current_package[self.package_index]
-            # self.log(time, f"Trying to send {self.sending_bit}")
+        output_path = Path(path) / Path(f"{self.name}_data.txt")
+        with open(output_path, "w+") as data_file:
+            data = [" ".join(map(str, d)) + "\n" for d in self.received_data]
+            data_file.writelines(data)
 
-            self.port.write(self.sending_bit)
-            if self.send_time == 0:
-                self.log(self.simulation_time, "Sent", f"{self.sending_bit}")
-            self.send_time += 1
-            if self.send_time == SIGNAL_TIME:
-                self.package_index += 1
-                if self.package_index == len(self.current_package):
-                    self.current_package = []
-                self.send_time = 0
-
-        self.time_connected += 1
+    def check_errors(self, frame) -> Tuple[List[VD], bool]:
+        check_config()
+        error_det_algorith = CONFIG["error_detection"]
+        return check_frame_correction(frame, error_det_algorith)

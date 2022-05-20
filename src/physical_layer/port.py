@@ -11,19 +11,36 @@ class Port:
         self.port_name = port_name
         self.write_callback = write_callback
 
+    @property
+    def name(self):
+        return self.port_name
+
     def connect(self, cable: Duplex) -> None:
         """Try to connecto to the given wire. If wire is alredy connected,
         an WireConnectionError is raised."""
         self.cable = cable
 
-    def write(self, value, time_to_reset: int = SIGNAL_TIME) -> None:
+    def disconnect(self):
+        self.cable.disconnect(self)
+        self.cable = None
+
+    def write(self, value) -> None:
         """Write the value to the wire"""
         if self.cable is None:
             raise PortNotConnectedError(self)
-        self.cable.write(value, self, time_to_reset)
+        self.cable.write(self, value)
 
-    def read(self) -> int:
+    def read(self, received=True) -> int:
         """Read the value from the wire"""
         if self.cable is None:
             raise PortNotConnectedError(self)
-        return self.cable.read(self)
+        return self.cable.read(self, received)
+
+    def can_write(self) -> bool:
+        """Indicates if port can write"""
+        if self.cable is None:
+            raise PortNotConnectedError(self)
+        return self.cable.can_write(self)
+
+    def __str__(self) -> str:
+        return self.port_name

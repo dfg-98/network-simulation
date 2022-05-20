@@ -28,8 +28,9 @@ class Device:
         self.logs = []
         self.simulation_time = 0
 
+    @property
     def is_active(self):
-        """bool : Estado del dispositivo."""
+        return False
 
     def port_name(self, port: int):
         """
@@ -61,7 +62,6 @@ class Device:
         time : int
             Timepo de ejecución de la simulación.
         """
-
         self.simulation_time = time
 
     def connect(self, wire: Wire, port_name: str):
