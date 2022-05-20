@@ -1,8 +1,6 @@
 from pathlib import Path
 
-CONFIG = {
-    "signal_time": 10,
-}
+CONFIG = {"signal_time": 10, "error_detection": "simple_hash"}
 
 _CONFIG_FILE_NAME = "config.txt"
 
@@ -10,6 +8,8 @@ _CONFIG_FILE_NAME = "config.txt"
 def _set_config_val(key: str, value):
     if key == "signal_time":
         CONFIG[key] = int(value)
+    if key == "error_detection":
+        CONFIG[key] = value
 
 
 def check_config():
@@ -24,6 +24,7 @@ def check_config():
         with open(_CONFIG_FILE_NAME, "w+") as file:
             file.writelines(
                 [
-                    "signal_time 10",
+                    "signal_time 10\n",
+                    "error_detection simple_hash",
                 ]
             )

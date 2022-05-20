@@ -4,7 +4,8 @@ from typing import List
 
 from physical_layer.hub import Hub
 from physical_layer.host import Host
-from physical_layer.bit import Bit
+from physical_layer.bit import VoltageDecodification as VD
+from physical_layer.switch import Switch
 
 
 class Instruction(metaclass=abc.ABCMeta):
@@ -117,7 +118,7 @@ class SendIns(Instruction):
         Datos a enviar.
     """
 
-    def __init__(self, time: int, host_name: str, data: List[Bit]):
+    def __init__(self, time: int, host_name: str, data: List[VD]):
         super().__init__(time)
         self.host_name = host_name
         self.data = data
@@ -143,5 +144,53 @@ class DisconnectIns(Instruction):
         super().__init__(time)
         self.port_name = port_name
 
-    def execute(self, sim: Simulation):
+    def execute(self, sim: "Simulation"):
         sim.disconnect(self.port_name)
+
+
+class CreateSwitchIns(Instruction):
+    """
+    Instrucción para crear un Switch.
+
+    Parameters
+    ----------
+    time : int
+        Timepo en milisegundos en el que será ejecutada la instrucción en
+        la simulación.
+    switch_name : str
+        Nombre del switch.
+    ports_count : int
+        Cantidad de puertos del switch.
+    """
+
+    def __init__(self, time: int, switch_name: str, ports_count: int):
+        super().__init__(time)
+        self.switch_name = switch_name
+        self.ports_count = ports_count
+
+    def execute(self, sim: "Simulation"):
+        switch = Switch(self.switch_name, self.ports_count)
+        sim.add_device(switch)
+
+
+class MacIns(Instruction):
+    def __init__(self, time: int, host_name: str, address: List[int]):
+        super().__init__(time)
+        self.host_name = host_name
+        self.address = address
+
+    def execute(self, sim: "Simulation"):
+        sim.assign_mac_addres(self.host_name, self.address)
+
+
+class SendFrameIns(Instruction):
+    def __init__(
+        self, time: int, host_name: str, mac: List[VD], data: List[VD]
+    ):
+        super().__init__(time)
+        self.host_name = host_name
+        self.mac = mac
+        self.data = data
+
+    def execute(self, sim: "Simulation"):
+        sim.send_frame(self.host_name, self.mac, self.data)

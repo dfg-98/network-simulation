@@ -1,13 +1,14 @@
-import time
+from random import random, randint
 from typing import List
 
-from physical_layer.bit import Bit
+from physical_layer.bit import VoltageDecodification as VD
 from physical_layer.device import Device
 from physical_layer.host import Host
-from physical_layer.wire import Wire
+from physical_layer.wire import Duplex
 from physical_layer.port import Port
 from config import check_config, CONFIG
 from physical_layer.constants import SIGNAL_TIME
+from physical_layer.error_detection import get_error_detection_data
 
 
 class Simulation:
@@ -17,11 +18,11 @@ class Simulation:
         self.devices = {}
         self.hosts = {}
         self.ports = {}
-        self.wires = []
+        self.cables = []
         global SIGNAL_TIME
         SIGNAL_TIME = CONFIG["signal_time"]
         self.output_path = output_path
-        self.end_delay = SIGNAL_TIME
+        self.end_delay = 2 * SIGNAL_TIME
         self.inst_index = 0
         self.time = 0
 
@@ -34,7 +35,7 @@ class Simulation:
 
         self.devices[device.name] = device
         for port in device.ports.values():
-            self.ports[port.port_name] = port
+            self.ports[port.name] = port
 
         if isinstance(device, Host):
             self.hosts[device.name] = device
@@ -49,21 +50,75 @@ class Simulation:
             if port_2 not in self.ports.keys():
                 raise ValueError(f"Port {port_2} does not exist.")
 
-        wire = Wire(port1=port1, port2=port2)
+        cable = Duplex(port1, port2)
 
-        self.wires.append(wire)
+        self.cables.append(cable)
 
-    def send(self, host_name: str, data: List[Bit]):
+    def assign_mac_addres(self, host_name, mac):
+
+        self.hosts[host_name].mac = mac
+
+    def send_frame(self, host_name: str, mac: List[VD], data: List[VD]):
+        """
+        Ordena a un host a enviar un frame determinado a una dirección mac
+        determinada.
+
+        Parameters
+        ----------
+        host_name : str
+            Nombre del host que envía la información.
+        mac : List[int]
+            Mac destino.
+        data : List[int]
+            Frame a enviar.
+        """
+
+        size_str = f"{len(data)//8:b}"
+
+        data_size = [VD.ZERO] * 8
+
+        for i in range(1, len(size_str) + 1):
+            data_size[-i] = VD(int(size_str[-i]))
+
+        e_size, e_data = get_error_detection_data(
+            data, CONFIG["error_detection"]
+        )
+
+        # rand = random()
+        # if rand < 1e-3:
+        #     ind = randint(0, len(data) - 1)
+        #     data[ind] = VD((int(data[ind]) + 1) % 2)
+
+        final_data = (
+            mac
+            + self.hosts[host_name].mac
+            + data_size
+            + e_size
+            + data
+            + e_data
+        )
+
+        self.send(host_name, final_data, len(final_data))
+
+    def send(self, host_name: str, data: List[VD], package_size: int = 8):
+
+        packages = []
+        while data:
+            packages.append(data[:package_size])
+            data = data[package_size:]
+
         if host_name not in self.devices.keys():
             raise ValueError(f"Host {host_name} does not exist.")
 
         host = self._get_host_by_name(host_name)
-        host.send(data)
+        host.send(packages)
 
     def disconnect(self, port_name: str):
         if port_name not in self.ports.keys():
             raise ValueError(f"Port {port_name} does not exist.")
+        self.cables.remove(self.ports[port_name].cable)
         self._get_port_by_name(port_name).disconnect()
+        print(f"Disconnect {port_name}")
 
     def start(self, instructions):
         """
@@ -88,9 +143,7 @@ class Simulation:
         bool : Indica si la simulación todavía está en ejecución.
         """
 
-        device_sending = any(
-            [(d.is_sending or d.time_to_send) for d in self.hosts.values()]
-        )
+        device_sending = any([d.is_active for d in self.devices.values()])
         running = self.instructions or device_sending
         if not running:
             self.end_delay -= 1
@@ -120,11 +173,9 @@ class Simulation:
         for device in self.devices.values():
             if device not in self.hosts.values():
                 device.update(self.time)
-        for host in self.hosts.values():
-            host.receive()
 
-        for wire in self.wires:
-            wire.update()
+        for cable in self.cables:
+            cable.update()
 
         self.time += 1
 

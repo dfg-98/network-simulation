@@ -7,8 +7,11 @@ from instructions import (
     SendIns,
     ConnectIns,
     DisconnectIns,
+    CreateSwitchIns,
+    MacIns,
+    SendFrameIns,
 )
-from physical_layer.bit import Bit
+from physical_layer.bit import VoltageDecodification as VD
 
 
 def _to_binary(hex_num: str, fmt: str = "016b"):
@@ -42,6 +45,9 @@ def _parse_single_inst(inst_text: str):
         if device_type == "hub":
             cant_ports = int(temp_line[4])
             return CreateHubIns(inst_time, device_name, cant_ports)
+        if device_type == "switch":
+            cant_ports = int(temp_line[4])
+            return CreateSwitchIns(inst_time, device_name, cant_ports)
         return CreateHostIns(inst_time, device_name)
 
     elif inst_name == "connect":
@@ -51,8 +57,19 @@ def _parse_single_inst(inst_text: str):
 
     elif inst_name == "send":
         host_name = temp_line[2]
-        data = [Bit(int(bit)) for bit in temp_line[3]]
+        data = [VD(int(bit)) for bit in temp_line[3]]
         return SendIns(inst_time, host_name, data)
+
+    elif inst_name == "mac":
+        host_name = temp_line[2]
+        address = [VD(int(i)) for i in _to_binary(temp_line[3])]
+        return MacIns(inst_time, host_name, address)
+
+    elif inst_name == "send_frame":
+        host_name = temp_line[2]
+        mac = [VD(int(i)) for i in _to_binary(temp_line[3])]
+        data = [VD(int(i)) for i in _to_binary(temp_line[4])]
+        return SendFrameIns(inst_time, host_name, mac, data)
 
     else:
         port_name = temp_line[2]

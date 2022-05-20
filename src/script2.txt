@@ -2,13 +2,20 @@
 0 create host pc2
 0 create host pc3
 0 create host pc4
+0 create hub h 4
 0 create switch sw1 3
 1 connect sw1_1 pc1_1
 1 connect sw1_2 pc2_1
-1 connect sw1_3 pc3_1
+1 connect sw1_3 h_1
+1 connect pc3_1 h_2
+1 connect pc4_1 h_3
 5 mac pc1 A4B5
 5 mac pc2 F231
 5 mac pc3 BAAB
 5 mac pc4 5231
 20 send_frame pc1 F231 A6F4
+100 send_frame pc3 A4B5 AAAAAAAAAA
 30 send_frame pc2 A4B5 A6F4
+200 send_frame pc4 A4B5 A6F4
+300 disconnect sw1_1
+400 connect sw1_1 pc1_1
