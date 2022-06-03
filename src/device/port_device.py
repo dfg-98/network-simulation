@@ -1,47 +1,43 @@
 from typing import Dict, List
 from pathlib import Path
-
-
-from .bit import VoltageDecodification as VD
-from .constants import SIGNAL_TIME
+from physical_layer.port import Port
+from physical_layer.physical_layer import PhysicalLayer
+from physical_layer.wire import Duplex
+from physical_layer.bit import VoltageDecodification as VD
+from datalink_layer.frame import Frame
 from .device import Device
-from .port import Port
-from .physical_layer import PhysicalLayer
-from .utils import from_bit_data_to_number
-from .wire import Duplex
 
 
-class Switch(Device):
-    """Represents a switch"""
+class PortDevice(Device):
+    """Representa un dispositivo que contiene puertos.
 
-    def __init__(self, name, ports_count) -> None:
+    Parameters
+    ----------
+    name : str
+        Nombre del dispositivo
+    ports_count : int
+        Cantidad de puertos
+    signal_time : int
+        ``Signal time`` de la simulación
+    """
 
+    def __init__(self, name: str, ports_count: int):
         ports = {}
         self.physical_layers = {}
         self.ports_buffer = {}
         for i in range(ports_count):
             port = Port(f"{name}_{i+1}")
             ports[f"{name}_{i+1}"] = port
-            pl = PhysicalLayer(port)
-            self.physical_layers[f"{name}_{i+1}"] = pl
-
-            pl.on_receive_callbacks.append(
-                self.receive_callback_generator(port.name)
+            self.physical_layers[f"{name}_{i+1}"] = self.create_physical_layer(
+                port
             )
             self.ports_buffer[f"{name}_{i+1}"] = []
-
         self.mac_table: Dict[int, str] = {}
         super().__init__(name, ports)
 
-    def receive_callback_generator(self, port):
-        def receive_callback(bit):
-            self.receive_on_port(port, bit)
-
-        return receive_callback
-
     @property
     def is_active(self):
-        """Returns True if the switch is active"""
+        """bool : Estado del switch"""
         return any([pl.is_active for pl in self.physical_layers.values()])
 
     def save_log(self, path=""):
@@ -95,24 +91,45 @@ class Switch(Device):
             Frame a ser enviado.
         """
 
-        for port, pl in self.physical_layers.items():
-            if port != from_port and pl.port.cable is not None:
-                pl.send(data)
+        for port, send_receiver in self.ports.items():
+            if port != from_port and send_receiver.cable_head is not None:
+                send_receiver.send(data)
 
     def reset(self):
         pass
 
-    def update(self, time: int):
+    def update(self, time: int) -> None:
         for pl in self.physical_layers.values():
             pl.update()
-
-        if time % SIGNAL_TIME == 0:
-            received = [self.get_port_value(p) for p in self.ports]
-            sent = [self.get_port_value(p, False) for p in self.ports]
-            self.special_log(time, received, sent)
         super().update(time)
 
-    def handle_buffer_data(self, port):
+    def receive(self) -> None:
+        """
+        Ordena a todos los puertos a recibir la información que les
+        esté llegnado. (Leer del cable)
+        """
+
+        for send_receiver in self.ports.values():
+            if send_receiver.cable_head is not None:
+                send_receiver.receive()
+
+        received = [self.get_port_value(p) for p in self.ports]
+        sent = [self.get_port_value(p, False) for p in self.ports]
+        self.special_log(self.sim_time, received, sent)
+
+    def on_frame_received(self, frame: Frame, port: str) -> None:
+        """Este método se ejecuta cada vez que se recibe un frame en
+        uno de los puertos.
+
+        Parameters
+        ----------
+        frame : Frame
+            Frame recibido.
+        port : str
+            Puerto por el cual llegó el frame.
+        """
+
+    def handle_buffer_data(self, port: str) -> None:
         """Se encarga de procesar los datos en el buffer de un puerto.
 
         Parameters
@@ -120,25 +137,13 @@ class Switch(Device):
         port : str
             Nombre del puerto
         """
-
         data = self.ports_buffer[port]
 
-        if len(data) < 48:
+        frame = Frame(data)
+        if not frame.is_valid:
             return
 
-        to_mac = from_bit_data_to_number(data[:16])
-        from_mac = from_bit_data_to_number(data[16:32])
-        size = from_bit_data_to_number(data[32:40]) * 8
-        size += from_bit_data_to_number(data[40:48]) * 8
-
-        if len(data) - 48 < size:
-            return
-        self.mac_table[from_mac] = port
-
-        if to_mac in self.mac_table:
-            self.physical_layers[self.mac_table[to_mac]].send([data])
-        else:
-            self.broadcast(port, [data])
+        self.on_frame_received(frame, port)
         self.ports_buffer[port] = []
 
     def get_port_value(self, port_name: str, received: bool = True):
@@ -152,10 +157,11 @@ class Switch(Device):
             Nombre del puerto.
         """
 
-        port = self.ports[port_name]
+        physical_layer = self.ports[port_name]
         bit = None
-        if port.cable is not None:
-            bit = port.read(received)
+        if physical_layer.port.cable is not None:
+            bit = physical_layer.port.read(received)
+
         return str(bit) if bit is not None else "-"
 
     def receive_on_port(self, port: str, bit: int):
@@ -168,10 +174,29 @@ class Switch(Device):
         bit : int
             Bit recibido
         """
-        if bit == VD.NULL or bit == VD.COLLISION:
-            return
+
         self.ports_buffer[port].append(bit)
         self.handle_buffer_data(port)
+
+    def create_physical_layer(self, port):
+        """Crea un ``PhysicalLayer``.
+
+        Parameters
+        ----------
+        port : Port
+            Puerto al que será asignado el ``PhysicalLayer``.
+
+        Returns
+        -------
+        PhysicalLayer
+            ``PhysicalLayer`` creado.
+        """
+
+        pl = PhysicalLayer(port)
+        pl.on_receive_callbacks.append(
+            lambda bit: self.receive_on_port(port.name, bit)
+        )
+        return pl
 
     def connect(self, cable: Duplex, port_name: str):
         port = self.ports[port_name]
@@ -182,4 +207,4 @@ class Switch(Device):
 
     def disconnect(self, port_name: str):
         self.ports_buffer[list(self.ports.keys()).index(port_name)] = []
-        self.physical_layers[port_name].disconnect()
+        self.ports[port_name].disconnect()

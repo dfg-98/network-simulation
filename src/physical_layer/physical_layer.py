@@ -1,8 +1,8 @@
 from typing import List
 from random import randint
 
+from constants import SIGNAL_TIME
 from .bit import VoltageDecodification as VD
-from .constants import SIGNAL_TIME
 from .port import Port
 
 
@@ -37,6 +37,10 @@ class PhysicalLayer:
         return (
             self.is_sending or self.time_to_send > 0
         ) and self.port.cable is not None
+
+    @property
+    def name(self):
+        return self.port.name
 
     def extend_max_time_to_send(self):
         self.max_time_to_send *= 2

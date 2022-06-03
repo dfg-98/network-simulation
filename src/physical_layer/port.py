@@ -1,4 +1,4 @@
-from .constants import SIGNAL_TIME
+from constants import SIGNAL_TIME
 from .wire import Duplex
 from .exceptions import PortNotConnectedError
 

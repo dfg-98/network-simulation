@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
-from .bit import VoltageDecodification as VD
-from .utils import from_bit_data_to_number
+from physical_layer.bit import VoltageDecodification as VD
+from utils import from_bit_data_to_number
 
 
 def _simple_hash(frame: List[VD]) -> Tuple[List[VD], bool]:

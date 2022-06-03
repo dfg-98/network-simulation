@@ -4,9 +4,6 @@ from typing import Dict
 from pathlib import Path
 
 
-from .wire import Wire
-
-
 class Device:
     """Abstract class for a device
 
@@ -64,7 +61,7 @@ class Device:
         """
         self.simulation_time = time
 
-    def connect(self, wire: Wire, port_name: str):
+    def connect(self, wire, port_name: str):
         """
         Conecta un cable dado a un puerto determinado.
 

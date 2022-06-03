@@ -1,5 +1,5 @@
+from constants import SIGNAL_TIME
 from .bit import VoltageDecodification
-from .constants import SIGNAL_TIME
 from .exceptions import PortNotConnectedError, TryToWriteOnTransmission
 
 

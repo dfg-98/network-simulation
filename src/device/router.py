@@ -1,13 +1,11 @@
-from nesim.devices.ip_packet_sender import IPPacketSender
-from nesim.devices.utils import (
-    from_bit_data_to_number,
+from network_layer.ip_sender import IPPacketSender
+from datalink_layer.frame import Frame
+from network_layer.ip import IPPacket, IP
+from utils import (
     from_number_to_bit_data,
     from_str_to_bin,
 )
 from typing import List, Union
-from nesim.devices.multiple_port_device import MultiplePortDevice
-from nesim.frame import Frame
-from nesim.ip import IP, IPPacket
 
 
 class Route:
@@ -98,9 +96,9 @@ class RouteTable:
 class Router(IPPacketSender, RouteTable):
     """Representa un router en la simulación."""
 
-    def __init__(self, name: str, ports_count: int, signal_time: int):
+    def __init__(self, name: str, ports_count: int):
         self.routes = []
-        super().__init__(name, ports_count, signal_time)
+        super().__init__(name, ports_count)
 
     def enroute(self, packet: IPPacket, port: int = 1, frame: Frame = None):
         """
@@ -179,3 +177,20 @@ class Router(IPPacketSender, RouteTable):
         valid_packet, packet = IPPacket.parse(frame.data)
         if valid_packet:
             self.on_ip_packet_received(packet, port, frame)
+
+    def handle_buffer_data(self, port: str) -> None:
+        """Se encarga de procesar los datos en el buffer de un puerto.
+
+        Parameters
+        ----------
+        port : str
+            Nombre del puerto
+        """
+        data = self.ports_buffer[port]
+
+        frame = Frame(data)
+        if not frame.is_valid:
+            return
+
+        self.on_frame_received(frame, port + 1)
+        self.ports_buffer[port] = []

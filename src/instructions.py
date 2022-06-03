@@ -2,10 +2,8 @@ from __future__ import annotations
 import abc
 from typing import List
 
-from physical_layer.hub import Hub
-from physical_layer.host import Host
 from physical_layer.bit import VoltageDecodification as VD
-from physical_layer.switch import Switch
+from device import Host, Hub, Switch
 
 
 class Instruction(metaclass=abc.ABCMeta):

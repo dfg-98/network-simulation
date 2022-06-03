@@ -2,11 +2,10 @@ from functools import reduce
 from typing import List
 from pathlib import Path
 
-from .bit import VoltageDecodification as VD
-from .constants import SIGNAL_TIME
+from physical_layer.bit import VoltageDecodification as VD
+from constants import SIGNAL_TIME
 from .device import Device
-from .port import Port
-from .wire import Wire
+from physical_layer.port import Port
 
 
 class Hub(Device):
@@ -92,12 +91,6 @@ class Hub(Device):
         if self.read_time == 0:
             self.special_log(time, self._received, self._sent)
             self.read_time = SIGNAL_TIME
-
-    def connect(self, wire: Wire, port_name: str):
-        if self.ports[port_name].wire is not None:
-            raise ValueError(f"Port {port_name} is currently in use.")
-
-        self.ports[port_name].connect(wire)
 
     def port_written(self, port: Port):
         def port_write_callback():

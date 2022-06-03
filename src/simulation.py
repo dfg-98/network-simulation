@@ -2,13 +2,12 @@ from random import random, randint
 from typing import List
 
 from physical_layer.bit import VoltageDecodification as VD
-from physical_layer.device import Device
-from physical_layer.host import Host
+from device import Device, Host
 from physical_layer.wire import Duplex
 from physical_layer.port import Port
 from config import check_config, CONFIG
-from physical_layer.constants import SIGNAL_TIME
-from physical_layer.error_detection import get_error_detection_data
+from constants import SIGNAL_TIME
+from datalink_layer.error_detection import get_error_detection_data
 
 
 class Simulation:
