@@ -53,9 +53,9 @@ class Simulation:
 
         self.cables.append(cable)
 
-    def assign_mac_addres(self, host_name, mac):
+    def assign_mac_addres(self, device_name, mac, interface):
 
-        self.hosts[host_name].mac = mac
+        self.devices[device_name].mac_addrs[interface] = mac
 
     def send_frame(self, host_name: str, mac: List[VD], data: List[VD]):
         """

@@ -48,6 +48,9 @@ def _parse_single_inst(inst_text: str):
         if device_type == "switch":
             cant_ports = int(temp_line[4])
             return CreateSwitchIns(inst_time, device_name, cant_ports)
+        if device_type == "router":
+            cant_ports = int(temp_line[4])
+            return CreateRouterIns(inst_time, device_name, cant_ports)
         return CreateHostIns(inst_time, device_name)
 
     elif inst_name == "connect":
@@ -62,8 +65,12 @@ def _parse_single_inst(inst_text: str):
 
     elif inst_name == "mac":
         host_name = temp_line[2]
+        interface = 1
+        if ":" in host_name:
+            host_name, interface_str = host_name.split(":")
+            interface = int(interface_str)
         address = [VD(int(i)) for i in _to_binary(temp_line[3])]
-        return MacIns(inst_time, host_name, address)
+        return MacIns(inst_time, host_name, interface, address)
 
     elif inst_name == "send_frame":
         host_name = temp_line[2]

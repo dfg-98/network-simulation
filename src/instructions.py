@@ -3,7 +3,7 @@ import abc
 from typing import List
 
 from physical_layer.bit import VoltageDecodification as VD
-from device import Host, Hub, Switch
+from device import Host, Hub, Switch, Router
 
 
 class Instruction(metaclass=abc.ABCMeta):
@@ -76,6 +76,32 @@ class CreateHostIns(Instruction):
         print(f"Creating host: {self.host_name}")
         host = Host(self.host_name)
         sim.add_device(host)
+
+
+class CreateRouterIns(Instruction):
+    """
+    Instrucción para crear un Router.
+
+    Parameters
+    ----------
+    time : int
+        Timepo en milisegundos en el que será ejecutada la instrucción en
+        la simulación.
+    host_name : str
+        Nombre del host.
+    """
+
+    def __init__(self, time: int, router_name: str, ports_count: int):
+        super().__init__(time)
+        self.router_name = router_name
+        self.ports_count = ports_count
+
+    def execute(self, sim: "Simulation"):
+        print(
+            f'[{self.time:>6}] Creating Router {self.router_name} with {self.ports_count} port{("s" if self.ports_count > 1 else "")}'
+        )
+        router = Router(self.router_name, self.ports_count)
+        sim.add_device(router)
 
 
 class ConnectIns(Instruction):
@@ -172,13 +198,16 @@ class CreateSwitchIns(Instruction):
 
 
 class MacIns(Instruction):
-    def __init__(self, time: int, host_name: str, address: List[int]):
+    def __init__(
+        self, time: int, host_name: str, interface: int, address: List[int]
+    ):
         super().__init__(time)
         self.host_name = host_name
         self.address = address
+        self.interface = interface
 
     def execute(self, sim: "Simulation"):
-        sim.assign_mac_addres(self.host_name, self.address)
+        sim.assign_mac_addres(self.host_name, self.address, self.interface)
 
 
 class SendFrameIns(Instruction):
