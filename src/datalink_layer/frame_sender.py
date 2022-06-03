@@ -56,6 +56,6 @@ class FrameSender(PortDevice):
 
         frame = Frame.build(mac, self.mac_addrs[port], data)
         print(
-            f'[{self.sim_time:>6}] {self.name + " - " + str(port):>18}      send: {frame}'
+            f'[{self.simulation_time:>6}] {self.name + " - " + str(port):>18}      send: {frame}'
         )
         self.send(frame.bit_data, port=port)

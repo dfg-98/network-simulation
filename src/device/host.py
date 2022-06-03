@@ -40,6 +40,7 @@ class Host(Router):
         self.enroute(packet)
 
     def save_log(self, path: str = ""):
+        super().save_log(path)
         output_path = Path(path) / Path(f"{self.name}_data.txt")
         with open(output_path, "w+") as data_file:
             data = [" ".join(map(str, d)) + "\n" for d in self.received_data]
@@ -64,7 +65,7 @@ class Host(Router):
             from_number_to_bit_data(frame.from_mac)
         )
         hex_data = from_bit_data_to_hex(frame.data)
-        r_data = [self.sim_time, data_from, hex_data]
+        r_data = [self.simulation_time, data_from, hex_data]
         if error:
             r_data.append("ERROR")
         else:
@@ -77,7 +78,7 @@ class Host(Router):
         if packet.to_ip != self.ip:
             return
 
-        r_data = [self.sim_time, str(packet.from_ip)]
+        r_data = [self.simulation_time, str(packet.from_ip)]
 
         # Is ICMP protocol
         if packet.protocol_number == 1:
@@ -92,7 +93,7 @@ class Host(Router):
 
     @property
     def physical_layer(self):
-        return self.ports[self.port_name(1)]
+        return self.physical_layers[self.port_name(1)]
 
     @property
     def str_mac(self):

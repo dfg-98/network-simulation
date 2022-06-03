@@ -7,12 +7,14 @@ class Switch(PortDevice):
 
     def on_frame_received(self, frame: Frame, port: int) -> None:
         print(
-            f'[{self.sim_time:>6}] {self.name + " - " + str(port):>18}  received: {frame}'
+            f'[{self.simulation_time:>6}] {self.name + " - " + str(port):>18}  received: {frame}'
         )
-        self.mac_table[frame.from_mac] = self.port_name(port)
+        self.mac_table[frame.from_mac] = port
 
         if frame.to_mac == 65_535 or frame.to_mac not in self.mac_table:
-            self.broadcast(self.port_name(port), [frame.bit_data])
+            self.broadcast(port, [frame.bit_data])
         else:
-            self.ports[self.mac_table[frame.to_mac]].send([frame.bit_data])
-        self.ports_buffer[port - 1] = []
+            self.physical_layers[self.mac_table[frame.to_mac]].send(
+                [frame.bit_data]
+            )
+        self.ports_buffer[port] = []

@@ -149,7 +149,7 @@ class Router(IPPacketSender, RouteTable):
         self.enroute(packet, port, frame)
 
     def on_frame_received(self, frame: Frame, port: int) -> None:
-        print(f"[{self.sim_time:>6}] {self.name:>18}  received:", frame)
+        print(f"[{self.simulation_time:>6}] {self.name:>18}  received:", frame)
         mac_dest = from_number_to_bit_data(frame.to_mac, 16)
         mac_dest_str = "".join(map(str, mac_dest))
         mac_origin = from_number_to_bit_data(frame.from_mac, 16)
@@ -177,20 +177,3 @@ class Router(IPPacketSender, RouteTable):
         valid_packet, packet = IPPacket.parse(frame.data)
         if valid_packet:
             self.on_ip_packet_received(packet, port, frame)
-
-    def handle_buffer_data(self, port: str) -> None:
-        """Se encarga de procesar los datos en el buffer de un puerto.
-
-        Parameters
-        ----------
-        port : str
-            Nombre del puerto
-        """
-        data = self.ports_buffer[port]
-
-        frame = Frame(data)
-        if not frame.is_valid:
-            return
-
-        self.on_frame_received(frame, port + 1)
-        self.ports_buffer[port] = []

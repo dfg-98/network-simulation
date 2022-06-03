@@ -91,31 +91,17 @@ class PortDevice(Device):
             Frame a ser enviado.
         """
 
-        for port, send_receiver in self.ports.items():
-            if port != from_port and send_receiver.cable_head is not None:
-                send_receiver.send(data)
+        for port, pl in self.physical_layers.items():
+            if port != from_port and pl.port.cable is not None:
+                pl.send(data)
 
     def reset(self):
         pass
 
     def update(self, time: int) -> None:
+        super().update(time)
         for pl in self.physical_layers.values():
             pl.update()
-        super().update(time)
-
-    def receive(self) -> None:
-        """
-        Ordena a todos los puertos a recibir la información que les
-        esté llegnado. (Leer del cable)
-        """
-
-        for send_receiver in self.ports.values():
-            if send_receiver.cable_head is not None:
-                send_receiver.receive()
-
-        received = [self.get_port_value(p) for p in self.ports]
-        sent = [self.get_port_value(p, False) for p in self.ports]
-        self.special_log(self.sim_time, received, sent)
 
     def on_frame_received(self, frame: Frame, port: str) -> None:
         """Este método se ejecuta cada vez que se recibe un frame en
@@ -157,14 +143,14 @@ class PortDevice(Device):
             Nombre del puerto.
         """
 
-        physical_layer = self.ports[port_name]
+        port = self.ports[port_name]
         bit = None
-        if physical_layer.port.cable is not None:
-            bit = physical_layer.port.read(received)
+        if port.cable is not None:
+            bit = port.read(received)
 
         return str(bit) if bit is not None else "-"
 
-    def receive_on_port(self, port: str, bit: int):
+    def receive_on_port(self, port: str, bit: VD):
         """Guarda el bit recibido en un puerto y procesa los datos del mismo.
 
         Parameters
@@ -175,8 +161,21 @@ class PortDevice(Device):
             Bit recibido
         """
 
+        received = [self.get_port_value(p) for p in self.ports]
+        sent = [self.get_port_value(p, False) for p in self.ports]
+        self.special_log(self.simulation_time, received, sent)
+
+        if bit == VD.NULL or bit == VD.COLLISION:
+            return
+
         self.ports_buffer[port].append(bit)
         self.handle_buffer_data(port)
+
+    def sent_on_port(self, port: str, bit: VD):
+        """Just log when sent"""
+        received = [self.get_port_value(p) for p in self.ports]
+        sent = [self.get_port_value(p, False) for p in self.ports]
+        self.special_log(self.simulation_time, received, sent)
 
     def create_physical_layer(self, port):
         """Crea un ``PhysicalLayer``.
@@ -195,6 +194,9 @@ class PortDevice(Device):
         pl = PhysicalLayer(port)
         pl.on_receive_callbacks.append(
             lambda bit: self.receive_on_port(port.name, bit)
+        )
+        pl.on_send_callbacks.append(
+            lambda bit: self.sent_on_port(port.name, bit)
         )
         return pl
 

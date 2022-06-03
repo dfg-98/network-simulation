@@ -101,16 +101,11 @@ class Simulation:
 
     def send(self, host_name: str, data: List[VD], package_size: int = 8):
 
-        packages = []
-        while data:
-            packages.append(data[:package_size])
-            data = data[package_size:]
-
         if host_name not in self.devices.keys():
             raise ValueError(f"Host {host_name} does not exist.")
 
         host = self._get_host_by_name(host_name)
-        host.send(packages)
+        host.send(data, package_size=package_size)
 
     def disconnect(self, port_name: str):
         if port_name not in self.ports.keys():
