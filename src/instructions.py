@@ -3,7 +3,8 @@ import abc
 from typing import List
 
 from physical_layer.bit import VoltageDecodification as VD
-from device import Host, Hub, Switch, Router
+from network_layer.ip import IP
+from device import Host, Hub, Switch, Router, Route
 
 
 class Instruction(metaclass=abc.ABCMeta):
@@ -210,6 +211,22 @@ class MacIns(Instruction):
         sim.assign_mac_addres(self.host_name, self.address, self.interface)
 
 
+class IPIns(Instruction):
+    def __init__(
+        self, time: int, device_name: str, interface: int, ip: IP, mask: IP
+    ):
+        super().__init__(time)
+        self.device_name = device_name
+        self.ip = ip
+        self.mask = mask
+        self.interface = interface
+
+    def execute(self, sim: "Simulation"):
+        sim.assign_ip_addres(
+            self.device_name, self.ip, self.mask, self.interface
+        )
+
+
 class SendFrameIns(Instruction):
     def __init__(
         self, time: int, host_name: str, mac: List[VD], data: List[VD]
@@ -221,3 +238,57 @@ class SendFrameIns(Instruction):
 
     def execute(self, sim: "Simulation"):
         sim.send_frame(self.host_name, self.mac, self.data)
+
+
+class SendIPPackage(Instruction):
+    def __init__(self, time: int, host_name: str, ip_dest: IP, data: List[VD]):
+        super().__init__(time)
+        self.host_name = host_name
+        self.ip = ip_dest
+        self.data = data
+
+    def execute(self, sim: "Simulation"):
+        sim.send_ip_package(self.host_name, self.ip, self.data)
+
+
+class PingIns(Instruction):
+    def __init__(
+        self,
+        time: int,
+        host_name: str,
+        ip_dest: IP,
+    ):
+        super().__init__(time)
+        self.host_name = host_name
+        self.ip = ip_dest
+
+    def execute(self, sim: "Simulation"):
+        sim.ping_to(self.host_name, self.ip)
+
+
+class RouteIns(Instruction):
+    def __init__(
+        self,
+        time: int,
+        device_name: str = None,
+        action: str = "reset",
+        destination_ip: IP = None,
+        mask: IP = None,
+        gateway: IP = None,
+        interface: int = None,
+    ):
+        super().__init__(time)
+        self.action = action
+        self.device_name = device_name
+        self.route = None
+
+        if (
+            destination_ip is not None
+            and mask is not None
+            and gateway is not None
+            and interface is not None
+        ):
+            self.route = Route(destination_ip, mask, gateway, interface)
+
+    def execute(self, sim: "Simulation"):
+        sim.route(self.device_name, self.action, self.route)

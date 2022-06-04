@@ -2,12 +2,14 @@ from random import random, randint
 from typing import List
 
 from physical_layer.bit import VoltageDecodification as VD
-from device import Device, Host
+from device import Device, Host, Route, Router
 from physical_layer.wire import Duplex
 from physical_layer.port import Port
 from config import check_config, CONFIG
 from constants import SIGNAL_TIME
 from datalink_layer.error_detection import get_error_detection_data
+from network_layer.ip import IP
+from network_layer.ip_sender import IPPacketSender
 
 
 class Simulation:
@@ -57,6 +59,25 @@ class Simulation:
 
         self.devices[device_name].mac_addrs[interface] = mac
 
+    def assign_ip_addres(self, device_name, ip: IP, mask: IP, interface: int):
+        """
+        Asigna una dirección mac a un host.
+
+        Parameters
+        ----------
+        device_name : str
+            Nombre del dispositivo al cual se le asigna la dirección mac.
+        mac : List[int]
+            Dirección mac.
+        """
+
+        device = self.devices[device_name]
+        if not isinstance(device, IPPacketSender):
+            raise TypeError(f"Can not set ip to {device_name}")
+
+        device.ips[interface] = ip
+        device.masks[interface] = mask
+
     def send_frame(self, host_name: str, mac: List[VD], data: List[VD]):
         """
         Ordena a un host a enviar un frame determinado a una dirección mac
@@ -99,6 +120,20 @@ class Simulation:
 
         self.send(host_name, final_data, len(final_data))
 
+    def send_ip_package(self, host_name: str, ip_dest: IP, data: List[int]):
+
+        if host_name not in self.hosts.keys():
+            raise ValueError(f"Unknown host {host_name}")
+
+        self.hosts[host_name].send_by_ip(ip_dest, data)
+
+    def ping_to(self, host_name: str, ip_dest: IP):
+
+        if host_name not in self.hosts.keys():
+            raise ValueError(f"Unknown host {host_name}")
+
+        self.hosts[host_name].send_ping_to(ip_dest)
+
     def send(self, host_name: str, data: List[VD], package_size: int = 8):
 
         if host_name not in self.devices.keys():
@@ -106,6 +141,31 @@ class Simulation:
 
         host = self._get_host_by_name(host_name)
         host.send(data, package_size=package_size)
+
+    def route(
+        self, device_name: str, action: str = "reset", route: Route = None
+    ):
+        """
+        Ejecuta una de las acciones realcionadas con las rutas: ``add``,
+        ``remove``, ``reset``
+
+        Parameters
+        ----------
+        device_name : str
+            Nombre del dispositivo al que se le ejecuta la acción.
+        action : str, optional
+            Acción a ejecutar.
+        route : Route, optional
+            Ruta a añadir o eliminar.
+        """
+
+        router: Router = self.devices[device_name]
+        if action == "add":
+            router.add_route(route)
+        elif action == "remove":
+            router.remove_route(route)
+        else:
+            router.reset_routes()
 
     def disconnect(self, port_name: str):
         if port_name not in self.ports.keys():
