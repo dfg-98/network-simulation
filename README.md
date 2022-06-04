@@ -1,5 +1,5 @@
-# network-physic-layer
-Simulation of the physical layer for Networking Subject
+# network-simulation
+Simulation of a computer network.
 
 Run using:
 
