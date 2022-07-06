@@ -80,7 +80,7 @@ class Frame:
         rand = random()
         if rand < CONFIG["error_prob"]:
             ind = randint(0, len(data) - 1)
-            data[ind] = VD((data[ind] + 1) % 2)
+            data[ind] = VD((data[ind].value + 1) % 2)
 
         size = data_size(data)
         final_data = dest_mac + orig_mac + size + e_size + data + e_data

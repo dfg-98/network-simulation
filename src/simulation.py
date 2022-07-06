@@ -57,7 +57,7 @@ class Simulation:
 
     def assign_mac_addres(self, device_name, mac, interface):
 
-        self.devices[device_name].mac_addrs[interface] = mac
+        self.devices[device_name].mac_addrs[f"{device_name}_{interface}"] = mac
 
     def assign_ip_addres(self, device_name, ip: IP, mask: IP, interface: int):
         """
@@ -75,8 +75,8 @@ class Simulation:
         if not isinstance(device, IPPacketSender):
             raise TypeError(f"Can not set ip to {device_name}")
 
-        device.ips[interface] = ip
-        device.masks[interface] = mask
+        device.ips[f"{device_name}_{interface}"] = ip
+        device.masks[f"{device_name}_{interface}"] = mask
 
     def send_frame(self, host_name: str, mac: List[VD], data: List[VD]):
         """
@@ -140,7 +140,7 @@ class Simulation:
             raise ValueError(f"Host {host_name} does not exist.")
 
         host = self._get_host_by_name(host_name)
-        host.send(data, package_size=package_size)
+        host.send(data, package_size=package_size, port=host.port_name(1))
 
     def route(
         self, device_name: str, action: str = "reset", route: Route = None

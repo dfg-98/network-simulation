@@ -8,6 +8,7 @@ from utils import (
     from_bit_data_to_number,
     from_number_to_bit_data,
 )
+from physical_layer.bit import VoltageDecodification as VD
 
 
 PAYLOAD_TABLE = {
@@ -75,7 +76,7 @@ class IP:
     @property
     def bit_data(self):
         """str: Binary representation of the IP"""
-        return [int(b) for b in self.str_binary]
+        return [VD(int(b)) for b in self.str_binary]
 
     def __repr__(self):
         """str: Value representation of the IP"""

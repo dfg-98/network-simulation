@@ -41,7 +41,9 @@ class Device:
             Este valor debe ser mayor o igual a 1 y menor o igual que la
             cantidad total de puertos del dispositivo.
         """
-        return f"{self.name}_{port}"
+        if isinstance(port, int):
+            return f"{self.name}_{port}"
+        return port
 
     def reset(self):
         """

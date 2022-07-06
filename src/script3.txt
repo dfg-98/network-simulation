@@ -1,0 +1,16 @@
+0 create host pc1
+0 create host pc2
+0 create host pc3
+
+0 create switch s1 3
+
+0 connect pc1_1 s1_1
+0 connect pc2_1 s1_2
+0 connect pc3_1 s1_3
+
+0 mac pc1:1 af01
+0 mac pc2:1 ff02
+0 mac pc3:1 be03
+
+10 send_frame pc1 ff02 f5
+10000 send_frame pc2 af01 f1

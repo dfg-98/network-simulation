@@ -100,7 +100,7 @@ class Router(IPPacketSender, RouteTable):
         self.routes = []
         super().__init__(name, ports_count)
 
-    def enroute(self, packet: IPPacket, port: int = 1, frame: Frame = None):
+    def enroute(self, packet: IPPacket, port: str, frame: Frame = None):
         """
         Enruta un paquete IP.
 
@@ -128,7 +128,7 @@ class Router(IPPacketSender, RouteTable):
         to_ip = route.gateway
         if route.gateway.raw_value == 0:
             to_ip = packet.to_ip
-        super().send_ip_packet(packet, route.interface, to_ip)
+        super().send_ip_packet(packet, f"{self.name}_{route.interface}", to_ip)
 
     def on_ip_packet_received(
         self, packet: IPPacket, port: int = 1, frame: Frame = None
@@ -148,7 +148,7 @@ class Router(IPPacketSender, RouteTable):
 
         self.enroute(packet, port, frame)
 
-    def on_frame_received(self, frame: Frame, port: int) -> None:
+    def on_frame_received(self, frame: Frame, port: str) -> None:
         print(f"[{self.simulation_time:>6}] {self.name:>18}  received:", frame)
         mac_dest = from_number_to_bit_data(frame.to_mac, 16)
         mac_dest_str = "".join(map(str, mac_dest))

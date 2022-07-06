@@ -32,12 +32,12 @@ class Host(Router):
             IP destino.
         """
 
-        self.send_ip_packet(IPPacket.ping(to_ip, self.ip))
+        self.send_ip_packet(IPPacket.ping(to_ip, self.ip), f"{self.name}_1")
 
     def send_ip_packet(
-        self, packet: IPPacket, port: int = 1, ip_dest: IP = None
+        self, packet: IPPacket, port: str, ip_dest: IP = None
     ) -> None:
-        self.enroute(packet)
+        self.enroute(packet, f"{self.name}_1")
 
     def save_log(self, path: str = ""):
         super().save_log(path)
@@ -56,11 +56,11 @@ class Host(Router):
     @property
     def ip(self) -> IP:
         """IP : IP del host"""
-        return self.ips[1]
+        return self.ips[f"{self.name}_1"]
 
     @property
     def mac(self):
-        return self.mac_addrs[1]
+        return self.mac_addrs[f"{self.name}_1"]
 
     def on_frame_received(self, frame: Frame, port: str) -> None:
         frame, error = self.check_errors(frame.bit_data)
@@ -73,11 +73,11 @@ class Host(Router):
         if error:
             r_data.append("ERROR")
         else:
-            super().on_frame_received(frame, 1)
+            super().on_frame_received(frame, self.port_name(port))
         self.received_data.append(r_data)
 
     def on_ip_packet_received(
-        self, packet: IPPacket, port: int = 1, frame: Frame = None
+        self, packet: IPPacket, port: str, frame: Frame = None
     ) -> None:
         if packet.to_ip != self.ip:
             return
@@ -88,7 +88,9 @@ class Host(Router):
         if packet.protocol_number == 1:
             payload_number = from_bit_data_to_number(packet.payload)
             if payload_number == 8:
-                self.send_ip_packet(IPPacket.pong(packet.from_ip, self.ip))
+                self.send_ip_packet(
+                    IPPacket.pong(packet.from_ip, self.ip), f"{self.name}_{1}"
+                )
             r_data.append(packet.icmp_payload_msg)
         else:
             hex_data = from_bit_data_to_hex(packet.payload)

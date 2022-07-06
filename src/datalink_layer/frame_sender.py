@@ -15,10 +15,10 @@ class FrameSender(PortDevice):
     """
 
     def __init__(self, name: str, ports_num: int):
-        self.mac_addrs: Dict[int, List[int]] = {}
+        self.mac_addrs: Dict[str, List[int]] = {}
         super().__init__(name, ports_num)
 
-    def send(self, data: List[VD], package_size=None, port: int = 1):
+    def send(self, data: List[VD], package_size, port: str):
         """
         Agrega nuevos datos para ser enviados a la lista de datos.
 
@@ -39,7 +39,7 @@ class FrameSender(PortDevice):
         physical_layer = self.physical_layers[self.port_name(port)]
         physical_layer.send(packages)
 
-    def send_frame(self, mac: List[VD], data: List[VD], port: int = 1):
+    def send_frame(self, mac: List[VD], data: List[VD], port: str):
         """
         Ordena a un host a enviar un frame determinado a una dirección mac
         determinada.
@@ -58,4 +58,4 @@ class FrameSender(PortDevice):
         print(
             f'[{self.simulation_time:>6}] {self.name + " - " + str(port):>18}      send: {frame}'
         )
-        self.send(frame.bit_data, port=port)
+        self.send(frame.bit_data, None, port=port)

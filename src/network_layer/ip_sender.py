@@ -26,13 +26,13 @@ class IPPacketSender(FrameSender):
     """
 
     def __init__(self, name: str, ports_count: int):
-        self.ips: Dict[int, IP] = {}
+        self.ips: Dict[str, IP] = {}
         self.masks: Dict[int, IP] = {}
         self.ip_table: Dict[str, List[int]] = {}
         self.waiting_for_arpq: Dict[str, List[List[int]]] = {}
         super().__init__(name, ports_count)
 
-    def make_arpq(self, ip: IP, port: int = 1):
+    def make_arpq(self, ip: IP, port: str):
         """
         Envía un broadcast siguiendo el protocolo ARP para obtener la
         mac de un IP determinado.
@@ -47,7 +47,7 @@ class IPPacketSender(FrameSender):
         ip_data = ip.bit_data
         self.send_frame([1] * 16, arpq + ip_data, port)
 
-    def respond_arpq(self, dest_mac: List[int], port: int = 1) -> None:
+    def respond_arpq(self, dest_mac: List[int], port: str) -> None:
         """
         Envía un frame que responde a un llamado ARPQ.
 
@@ -64,7 +64,7 @@ class IPPacketSender(FrameSender):
         self.send_frame(dest_mac, arpq + ip_data, port)
 
     def send_ip_packet(
-        self, packet: IPPacket, port: int = 1, ip_dest: IP = None
+        self, packet: IPPacket, port: str, ip_dest: IP = None
     ) -> None:
         """
         Envía un IP packet.
@@ -90,7 +90,7 @@ class IPPacketSender(FrameSender):
         else:
             self.send_frame(self.ip_table[ip_dest_str], packet.bit_data, port)
 
-    def send_by_ip(self, ip_dest: IP, data: List[int], port: int = 1) -> None:
+    def send_by_ip(self, ip_dest: IP, data: List[int], port: str) -> None:
         """
         Envía los datos dados a un IP determinado.
 
