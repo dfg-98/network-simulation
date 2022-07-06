@@ -58,6 +58,10 @@ class Host(Router):
         """IP : IP del host"""
         return self.ips[1]
 
+    @property
+    def mac(self):
+        return self.mac_addrs[1]
+
     def on_frame_received(self, frame: Frame, port: str) -> None:
         frame, error = self.check_errors(frame.bit_data)
         frame = Frame(frame)
